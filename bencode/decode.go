@@ -50,6 +50,7 @@ func decodeString(reader *bufio.Reader) (string, error) {
 }
 
 func decodeList(reader *bufio.Reader) ([]interface{}, error) {
+	_, _ = reader.ReadByte()
 	lst := make([]interface{}, 0)
 	for {
 		// The next byte being 'e' indicates that the dictionary has ended
@@ -70,6 +71,7 @@ func decodeList(reader *bufio.Reader) ([]interface{}, error) {
 }
 
 func decodeDictionary(reader *bufio.Reader) (map[string]interface{}, error) {
+	_, _ = reader.ReadByte()
 	dic := make(map[string]interface{})
 	for {
 		// The next byte being 'e' indicates that the dictionary has ended
@@ -127,11 +129,11 @@ func decodeNextElement(reader *bufio.Reader) (interface{}, error) {
 }
 
 func Decode(reader *bufio.Reader) (map[string]interface{}, error) {
-	firstByte, err := reader.ReadByte()
+	firstByte, err := reader.Peek(1)
 	if err != nil {
 		return nil, err
 	}
-	if firstByte == 'd' {
+	if firstByte[0] == 'd' {
 		return decodeDictionary(reader)
 	} else {
 		return nil, errors.New("bencode data must start with a dictionary")

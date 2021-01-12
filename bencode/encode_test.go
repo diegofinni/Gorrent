@@ -1,41 +1,74 @@
 package bencode
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 )
 
-func TestNewEncoder(t *testing.T) {
-	e := NewEncoder()
-	if e == nil {
-		panic(e)
+func compareEncodings(data map[string]interface{}, result, reference []byte) {
+	var errString strings.Builder
+	errString.WriteString("Data: ")
+	errString.WriteString(fmt.Sprintln(data))
+	errString.WriteString(fmt.Sprintf("Result: %s\n", result))
+	errString.WriteString(fmt.Sprintf("Reference: %s\n", reference))
+	if len(result) != len(reference) {
+		errString.WriteString(fmt.Sprintf("Result len: %d, Reference len: %d", len(result), len(reference)))
+		fmt.Println(errString.String())
+		panic("encoding is wrong length")
+	}
+	for i, v := range result {
+		if v != reference[i] {
+			errString.WriteString(fmt.Sprintf("Wrong encoding at index %d\n", i))
+			errString.WriteString(fmt.Sprintf("Expected %c, got %c\n", v, reference[i]))
+			fmt.Println(errString.String())
+			panic("encoding is incorrect")
+		}
 	}
 }
 
-func TestEncoder_Encode(t *testing.T) {
-	encoder := NewEncoder()
+func TestEncode1(t *testing.T) {
+	data := make(map[string]interface{})
+	data["spam"] = []interface{}{"a", "b"}
+	encodedData, err := Encode(data)
+	if encodedData == nil || err != nil {
+		panic(fmt.Sprintf("Failed to encode data: \n%e", err))
+	}
+	properEncoding := []byte("d4:spaml1:a1:bee")
+	compareEncodings(data, encodedData, properEncoding)
+}
+
+func TestEncode2(t *testing.T) {
 	data := make(map[string]interface{})
 	data["cow"] = "moo"
-	data["spam"] = []interface{}{"a", "b"}
-	encoder.Encode(data)
-	encodedData, err := encoder.ReadAll()
+	data["spam"] = "eggs"
+	encodedData, err := Encode(data)
 	if encodedData == nil || err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Failed to encode data: \n%e", err))
 	}
-	buf := bytes.NewBuffer(encodedData)
-	decodedData, err := Decode(bufio.NewReader(buf))
-	if decodedData == nil || err != nil {
-		panic(err)
-	}
-	originalLen, _ := fmt.Println(data)
-	decodedLen,  _ := fmt.Println(decodedData)
-	if originalLen != decodedLen {
-		panic("decoded data does not equal original data")
-	}
+	properEncoding := []byte("d3:cow3:moo4:spam4:eggse")
+	compareEncodings(data, encodedData, properEncoding)
 }
 
-func TestEncoder_ReadAll(t *testing.T) {
+func TestEncode3(t *testing.T) {
+	data := make(map[string]interface{})
+	data["publisher"] = "bob"
+	data["publisher-webpage"] = "www.example.com"
+	data["publisher.location"] = "home"
+	encodedData, err := Encode(data)
+	if encodedData == nil || err != nil {
+		panic(fmt.Sprintf("Failed to encode data: \n%e", err))
+	}
+	properEncoding := []byte("d9:publisher3:bob17:publisher-webpage15:www.example.com18:publisher.location4:homee")
+	compareEncodings(data, encodedData, properEncoding)
+}
 
+func TestEncode4(t *testing.T) {
+	data := make(map[string]interface{})
+	encodedData, err := Encode(data)
+	if encodedData == nil || err != nil {
+		panic(fmt.Sprintf("Failed to encode data: \n%e", err))
+	}
+	properEncoding := []byte("de")
+	compareEncodings(data, encodedData, properEncoding)
 }

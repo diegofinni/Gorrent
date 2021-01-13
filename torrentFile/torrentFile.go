@@ -5,18 +5,28 @@ import (
 	"bufio"
 	"crypto/sha1"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"strings"
 )
 
-type TorrentFile struct {
+type torrentFile struct {
 	Announce    string
 	InfoHash    [20]byte
 	PieceHashes [][20]byte
 	PieceLength int
 	Length      int
 	Name        string
+}
+
+func printInfoMap(i map[string]interface{}) {
+	fmt.Println("//////// INFO MAP /////////")
+	for k, v := range i {
+		fmt.Printf("K: %s, V: %s\n", k, v)
+	}
+	fmt.Println("//////// INFO MAP /////////")
 }
 
 func checkAllFieldsExist(data map[string]interface{}) error {
@@ -28,6 +38,7 @@ func checkAllFieldsExist(data map[string]interface{}) error {
 		return errors.New("info field does not exist in top level dictionary")
 	}
 	infoMap, ok := info.(map[string]interface{})
+	printInfoMap(infoMap)
 	if !ok {
 		return errors.New("info field is not of type map[string]interface{}")
 	}
@@ -58,7 +69,7 @@ func checkAllFieldsExist(data map[string]interface{}) error {
 func pieceHashesFormatter(length, pieceLength int, buf []byte) ([][20]byte, error) {
 	// If the length fields do not make sense, return an error
 	if len(buf) != length || length % pieceLength != 0 || length % 20 != 0 || pieceLength % 20 != 0 {
-		return [][20]byte{}, errors.New("got malformed data from torrentfile")
+		return [][20]byte{}, errors.New("got malformed data from torrentFile")
 	}
 	formattedPieces := make([][20]byte, 0)
 	for i := 0; i < length; i += 20 {
@@ -68,27 +79,39 @@ func pieceHashesFormatter(length, pieceLength int, buf []byte) ([][20]byte, erro
 }
 
 
-func (t *TorrentFile) Download(path string) error {
+func (t *torrentFile) Download(path string) error {
 	return nil
 }
 
-func NewTorrentFile(path string) (*TorrentFile, error) {
-	var tf *TorrentFile
+func NewTorrentFile(path string) (*torrentFile, error) {
+	var tf *torrentFile
+
 	// Open torrent file
 	file, err := os.Open(path)
 	if err != nil {
 		return tf, err
 	}
+
+	// Defer closing the file safely
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
 	// Decode the torrent file using bencoding standard
-	decodedData, err := bencode.Decode(bufio.NewReader(file))
+	decodedData, err := bencode.Decode(bufio.NewReader(io.Reader(file)))
 	if err != nil {
 		return tf, err
 	}
-	// Verify that all necessary fields for a TorrentFile exist
+
+	// Verify that all necessary fields for a torrentFile exist
 	if err = checkAllFieldsExist(decodedData); err != nil {
 		return tf, err
 	}
-	// Extract all necessary fields to make a TorrentFile struct
+
+	// Extract all necessary fields to make a torrentFile struct
 	info, _ := decodedData["info"].(map[string]interface{})
 	announce := reflect.ValueOf(decodedData["announce"]).String()
 	infoHash := sha1.Sum(reflect.ValueOf(decodedData["info"]).Bytes())
@@ -101,7 +124,7 @@ func NewTorrentFile(path string) (*TorrentFile, error) {
 		return tf, err
 	}
 
-	tf = &TorrentFile{
+	tf = &torrentFile{
 		Announce:    announce,
 		InfoHash:    infoHash,
 		PieceHashes: formattedPieces,

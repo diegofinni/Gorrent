@@ -58,6 +58,7 @@ func decodeList(reader *bufio.Reader) ([]interface{}, error) {
 		if err != nil {
 			return lst, err
 		} else if nextByte[0] == 'e' {
+			_, _  = reader.ReadByte()
 			return lst, nil
 		}
 
@@ -79,6 +80,7 @@ func decodeDictionary(reader *bufio.Reader) (map[string]interface{}, error) {
 		if err != nil {
 			return dic, err
 		} else if nextByte[0] == 'e' {
+			_, _ = reader.ReadByte()
 			return dic, nil
 		}
 
